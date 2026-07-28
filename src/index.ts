@@ -3,7 +3,13 @@
 import { runPreflight } from './preflight.js';
 import { SingleInstanceLock } from './lock.js';
 import { Logger } from './logger.js';
+import { ApiServer } from './api-server.js';
+import { VpnServices } from './services.js';
+import { loadOrCreateConfig } from './config-store.js';
+import { DEFAULT_UI_PORT } from './config.js';
 import { mkdirSync, existsSync } from 'node:fs';
+import { exec } from 'node:child_process';
+import { join } from 'node:path';
 
 export interface DaemonState {
   preflight: ReturnType<typeof runPreflight>;
@@ -51,26 +57,66 @@ export async function bootstrap(baseDir?: string): Promise<DaemonState> {
   return { preflight, logger, lock, isFirstRun };
 }
 
-async function main(): Promise<void> {
-  const state = await bootstrap();
+function openBrowser(url: string): void {
+  const cmd =
+    process.platform === 'darwin'
+      ? `open "${url}"`
+      : process.platform === 'win32'
+        ? `start "" "${url}"`
+        : `xdg-open "${url}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      process.stderr.write(`Could not open browser automatically. Open ${url} manually.\n`);
+    }
+  });
+}
 
-  // VALIDATE[major] F6 (PRD architecture): bootstrap stub — API server, wg device (wgmanager),
-  // reconciler, control channel, diagnostics, recovery sweep never started. Daemon does nothing.
-  // fix: wire modules here (load keys/config -> sweep -> start wg -> reconciler -> api -> control).
-  state.logger.info('Daemon initialized. API server and supervisor would start here.');
+async function main(): Promise<void> {
+  const baseDir = process.argv[2];
+  const state = await bootstrap(baseDir);
+
+  const { config } = loadOrCreateConfig(state.preflight.paths.configPath);
+  const uiPort = config.uiPort ?? DEFAULT_UI_PORT;
+
+  const wwwDir = join(__dirname, '..', '..', 'www');
+
+  const services = new VpnServices({
+    paths: state.preflight.paths,
+    platform: state.preflight.platform,
+    logger: state.logger,
+  });
+
+  const apiServer = new ApiServer({
+    port: uiPort,
+    wwwDir,
+    canonicalHost: `127.0.0.1:${uiPort}`,
+    services,
+  });
+
+  await apiServer.start();
+
+  const url = apiServer.address;
+  process.stdout.write(`\n  simple-vpn UI: ${url}\n\n`);
+  state.logger.info(`API server listening on ${url}`);
+
+  openBrowser(url);
 
   process.on('SIGINT', () => {
     state.logger.info('Received SIGINT, shutting down.');
-    state.lock.release();
-    state.logger.close();
-    process.exit(0);
+    void apiServer.stop().then(() => services.stopInterface()).then(() => {
+      state.lock.release();
+      state.logger.close();
+      process.exit(0);
+    });
   });
 
   process.on('SIGTERM', () => {
     state.logger.info('Received SIGTERM, shutting down.');
-    state.lock.release();
-    state.logger.close();
-    process.exit(0);
+    void apiServer.stop().then(() => services.stopInterface()).then(() => {
+      state.lock.release();
+      state.logger.close();
+      process.exit(0);
+    });
   });
 }
 

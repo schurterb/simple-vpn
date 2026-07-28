@@ -17,6 +17,9 @@ export interface NodeConfig {
   listenPort: number | null;
   uiPort: number;
   anchorSigPubkey: string | null;
+  interfaceName: string | null;
+  anchorWgPubkey: string | null;
+  anchorEndpoint: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -40,6 +43,9 @@ export function createDefaultConfig(): NodeConfig {
     listenPort: null,
     uiPort: DEFAULT_UI_PORT,
     anchorSigPubkey: null,
+    interfaceName: null,
+    anchorWgPubkey: null,
+    anchorEndpoint: null,
     createdAt: now,
     updatedAt: now,
   };

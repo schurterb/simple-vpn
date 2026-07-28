@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SingleInstanceLock } from '../src/lock.js';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 
 describe('SingleInstanceLock', () => {
   let dir: string;
@@ -50,5 +50,35 @@ describe('SingleInstanceLock', () => {
     lock.release();
     assert.equal(lock.acquire(), true);
     lock.release();
+  });
+
+  it('writes PID to lock file on acquire', () => {
+    const lockFile = join(dir, 'test5.lock');
+    const lock = new SingleInstanceLock(lockFile);
+    assert.equal(lock.acquire(), true);
+    const content = readFileSync(lockFile, 'utf-8').trim();
+    assert.equal(content, String(process.pid));
+    lock.release();
+  });
+
+  it('readPid returns PID from existing lock file', () => {
+    const lockFile = join(dir, 'test6.lock');
+    const lock = new SingleInstanceLock(lockFile);
+    assert.equal(lock.acquire(), true);
+    const pid = SingleInstanceLock.readPid(lockFile);
+    assert.equal(pid, process.pid);
+    lock.release();
+  });
+
+  it('readPid returns null when lock file missing', () => {
+    const lockFile = join(dir, 'nonexistent.lock');
+    assert.equal(SingleInstanceLock.readPid(lockFile), null);
+  });
+
+  it('readPid returns null for invalid content', () => {
+    const lockFile = join(dir, 'invalid.lock');
+    const { writeFileSync } = require('node:fs');
+    writeFileSync(lockFile, 'not-a-pid');
+    assert.equal(SingleInstanceLock.readPid(lockFile), null);
   });
 });

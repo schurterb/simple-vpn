@@ -2,14 +2,16 @@
   "name": "simple-vpn",
   "version": "0.1.0",
   "description": "Lightweight self-hosted VPN for friends playing Vintage Story together",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "bin": {
-    "simple-vpn": "dist/index.js"
+    "simple-vpn": "dist/src/index.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
+    "stop": "node dist/scripts/stop.js",
     "test": "node --test --import tsx tests/*.test.ts",
+    "setup": "node dist/scripts/setup.js",
     "service:install": "node dist/scripts/service-install.js",
     "service:uninstall": "node dist/scripts/service-uninstall.js"
   },
