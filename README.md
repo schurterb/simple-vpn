@@ -4,18 +4,30 @@ Lightweight, self-hosted VPN for friends playing Vintage Story together. Creates
 
 ## Quick Start
 
+### One-line setup (Linux / macOS)
+
 ```bash
-# Install (unprivileged — never run npm install as root)
-npm install
+git clone <repo-url> simple-vpn && cd simple-vpn && ./quickstart.sh
+```
 
-# Start the daemon (will prompt for sudo/admin for interface creation)
-npm start
+This clones, installs deps, builds, checks/installs WireGuard, and starts the daemon. You'll be prompted for your password (sudo) for VPN interface creation. The UI opens automatically in your browser.
 
-# Optional: install as OS service for set-and-forget operation
-npm run service:install
+### One-line setup (Windows)
 
-# Uninstall service
-npm run service:uninstall
+```powershell
+git clone <repo-url> simple-vpn; cd simple-vpn; .\quickstart.ps1
+```
+
+Run in PowerShell. You'll get a UAC prompt for admin privileges. Install [WireGuard for Windows](https://www.wireguard.com/install/) first if not already installed.
+
+### Manual steps (if needed)
+
+```bash
+npm install      # install deps
+npm run build    # compile TypeScript
+npm start        # start daemon (needs root/admin)
+npm stop         # stop daemon
+npm run setup    # install + build + check WireGuard + start
 ```
 
 **Requirements:** Node.js >= 20 LTS. Root/Administrator needed for VPN interface creation.

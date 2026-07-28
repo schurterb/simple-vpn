@@ -14,7 +14,7 @@ async function bootstrap() {
 
 // VALIDATE[minor] F17: 4th-arg headers passed by btn-add-player below are silently ignored —
 // Idempotency-Key never sent (PRD requires it on POST /api/invites). fix: accept + merge extra headers.
-async function apiCall(method, path, body) {
+async function apiCall(method, path, body, extraHeaders) {
   const opts = {
     method,
     headers: {
@@ -22,6 +22,9 @@ async function apiCall(method, path, body) {
       'X-Svpn-Api': '1',
     },
   };
+  if (extraHeaders) {
+    Object.assign(opts.headers, extraHeaders);
+  }
   if (body) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
@@ -51,7 +54,7 @@ document.getElementById('btn-member').addEventListener('click', () => {
 document.getElementById('btn-create-network').addEventListener('click', async () => {
   const name = document.getElementById('anchor-name').value;
   const port = document.getElementById('anchor-port').value;
-  const result = await apiCall('POST', '/api/settings', { name, listenPort: parseInt(port) });
+  const result = await apiCall('PATCH', '/api/settings', { name, listenPort: parseInt(port) });
   if (result.code) {
     document.getElementById('error').textContent = result.message;
   } else {
@@ -126,7 +129,7 @@ document.getElementById('btn-toggle-listener').addEventListener('click', async (
 document.getElementById('btn-accept-guard').addEventListener('click', async () => {
   // VALIDATE[minor] F17: guard consent posted to /api/listener — wrong resource; no guard endpoint exists (F5).
   // fix: dedicated guard-consent endpoint (or settings field) wired to GamePortGuard.apply.
-  const result = await apiCall('POST', '/api/listener', { guardConsent: true });
+  const result = await apiCall('POST', '/api/guard', { consented: true });
   if (result.code) {
     document.getElementById('error').textContent = result.message;
   } else {

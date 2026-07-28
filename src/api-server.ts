@@ -121,7 +121,7 @@ export class ApiServer {
   private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:");
 
     const remoteAddr = req.socket.remoteAddress;
     if (!isLoopback(remoteAddr)) {

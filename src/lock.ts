@@ -1,4 +1,4 @@
-import { openSync, closeSync, unlinkSync } from 'node:fs';
+import { openSync, closeSync, unlinkSync, writeSync, readFileSync } from 'node:fs';
 
 export class SingleInstanceLock {
   private fd: number | null = null;
@@ -11,7 +11,18 @@ export class SingleInstanceLock {
     } catch {
       return false;
     }
+    writeSync(this.fd, String(process.pid));
     return true;
+  }
+
+  static readPid(lockFile: string): number | null {
+    try {
+      const content = readFileSync(lockFile, 'utf-8').trim();
+      const pid = parseInt(content, 10);
+      return Number.isNaN(pid) ? null : pid;
+    } catch {
+      return null;
+    }
   }
 
   release(): void {
