@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="">
+  <title>Simple VPN</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --card: #16213e;
+      --accent: #0f3460;
+      --text: #e0e0e0;
+      --muted: #8892b0;
+      --green: #4caf50;
+      --red: #f44336;
+      --yellow: #ffc107;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 { color: var(--text); margin-bottom: 1rem; }
+    h2 { color: var(--muted); margin-bottom: 0.5rem; font-size: 1.1rem; }
+    .card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .card.hidden { display: none; }
+    button {
+      background: var(--accent);
+      color: var(--text);
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input, textarea {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--muted);
+      padding: 0.5rem;
+      border-radius: 4px;
+      width: 100%;
+      font-size: 1rem;
+    }
+    textarea { min-height: 80px; font-family: monospace; }
+    label { display: block; margin-bottom: 0.3rem; color: var(--muted); }
+    .field { margin-bottom: 1rem; }
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+    .status-dot.ok { background: var(--green); }
+    .status-dot.err { background: var(--red); }
+    .status-dot.warn { background: var(--yellow); }
+    .peer-list { list-style: none; }
+    .peer-list li {
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+    }
+    .error-msg { color: var(--red); margin-top: 0.5rem; }
+    .success-msg { color: var(--green); margin-top: 0.5rem; }
+    .server-addr {
+      font-size: 1.3rem;
+      font-family: monospace;
+      color: var(--green);
+      margin: 0.5rem 0;
+    }
+    .copy-btn { font-size: 0.85rem; padding: 0.3rem 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Simple VPN</h1>
+
+  <div id="error" class="error-msg"></div>
+  <div id="success" class="success-msg"></div>
+
+  <!-- First Run: Role Selection -->
+  <div id="role-select" class="card">
+    <h2>First Run Setup</h2>
+    <p style="margin-bottom: 1rem; color: var(--muted);">Choose how this node will operate:</p>
+    <div style="display: flex; gap: 1rem;">
+      <button id="btn-anchor">I'm the Game Host (Anchor)</button>
+      <button id="btn-member">I'm a Player (Member)</button>
+    </div>
+  </div>
+
+  <!-- Anchor Setup -->
+  <div id="anchor-setup" class="card hidden">
+    <h2>Anchor Setup</h2>
+    <div class="field">
+      <label for="anchor-name">Network Name</label>
+      <input type="text" id="anchor-name" placeholder="My Game Night VPN">
+    </div>
+    <div class="field">
+      <label for="anchor-port">Listen Port</label>
+      <input type="number" id="anchor-port" value="51820">
+    </div>
+    <button id="btn-create-network">Create Network</button>
+  </div>
+
+  <!-- Member Setup: Invite Import -->
+  <div id="member-setup" class="card hidden">
+    <h2>Join Network</h2>
+    <div class="field">
+      <label for="invite-code">Paste Invite Code</label>
+      <textarea id="invite-code" placeholder="Paste the invite code from your game host..."></textarea>
+    </div>
+    <button id="btn-join">Join Network</button>
+  </div>
+
+  <!-- Reply Display (member after invite import) -->
+  <div id="reply-display" class="card hidden">
+    <h2>Your Reply Code</h2>
+    <p style="margin-bottom: 0.5rem; color: var(--muted);">Send this back to the host the same way you got the invite.</p>
+    <textarea id="reply-code" readonly></textarea>
+    <button id="btn-copy-reply" class="copy-btn" style="margin-top: 0.5rem;">Copy</button>
+  </div>
+
+  <!-- Server Address (shown on dashboard) -->
+  <div id="server-address-card" class="card hidden">
+    <h2>Server Address</h2>
+    <div class="server-addr" id="server-address">10.42.0.1:42420</div>
+    <button id="btn-copy-server" class="copy-btn">Copy</button>
+    <p style="margin-top: 0.5rem; color: var(--muted);">In Vintage Story: Multiplayer → Add Server → paste this → Connect.</p>
+  </div>
+
+  <!-- Status Dashboard -->
+  <div id="dashboard" class="card hidden">
+    <h2>Status</h2>
+    <div id="status-info"></div>
+  </div>
+
+  <!-- Diagnostics -->
+  <div id="diagnostics-card" class="card hidden">
+    <h2>Diagnostics</h2>
+    <button id="btn-probe">Run Diagnostics</button>
+    <div id="diagnostics" style="margin-top: 0.5rem;"></div>
+  </div>
+
+  <!-- Peer List -->
+  <div id="peers" class="card hidden">
+    <h2>Connected Players</h2>
+    <ul class="peer-list" id="peer-list"></ul>
+  </div>
+
+  <!-- Anchor Tools: Invite Issue + Reply Import -->
+  <div id="anchor-tools" class="card hidden">
+    <h2>Add Player</h2>
+    <div class="field">
+      <label for="new-player-name">Player Name</label>
+      <input type="text" id="new-player-name" placeholder="Friend's name">
+    </div>
+    <button id="btn-add-player">Create Invite</button>
+    <div id="invite-display" class="hidden" style="margin-top: 0.5rem;">
+      <textarea id="invite-output" readonly></textarea>
+      <button id="btn-copy-invite" class="copy-btn" style="margin-top: 0.5rem;">Copy Invite</button>
+    </div>
+    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--accent);">
+    <h2>Import Reply</h2>
+    <div class="field">
+      <label for="reply-import">Paste Reply Code</label>
+      <textarea id="reply-import" placeholder="Paste the reply code from your player..."></textarea>
+    </div>
+    <button id="btn-import-reply">Accept Player</button>
+    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--accent);">
+    <h2>Remove Player</h2>
+    <div class="field">
+      <label for="remove-peer-key">Player Public Key (base64url)</label>
+      <input type="text" id="remove-peer-key" placeholder="wgPubkey...">
+    </div>
+    <button id="btn-remove-peer">Remove Player</button>
+  </div>
+
+  <!-- Settings -->
+  <div id="settings" class="card hidden">
+    <h2>Settings</h2>
+    <div class="field">
+      <label>Listener Mode (allow direct peer connections)</label>
+      <button id="btn-toggle-listener">Enable</button>
+    </div>
+    <div id="listener-guide" class="error-msg hidden"></div>
+  </div>
+
+  <!-- Game-port Guard -->
+  <div id="guard-consent" class="card hidden">
+    <h2>Game-port Guard</h2>
+    <p style="margin-bottom: 0.5rem; color: var(--muted);">Restrict inbound port 42420 to overlay only. Recommended for security.</p>
+    <button id="btn-accept-guard">Accept & Enable Guard</button>
+  </div>
+
+  <!-- Guard State Display -->
+  <div id="guard-state" style="margin-top: 0.5rem;"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
